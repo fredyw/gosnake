@@ -26,15 +26,22 @@ import (
 	"fmt"
 	"github.com/nsf/termbox-go"
 	"os"
+	"time"
 )
 
 const (
-	topLeftX     int = 1
-	topLeftY     int = 0
-	bottomRightX int = 60
-	bottomRightY int = 20
-	snakeX           = bottomRightX / 2
-	snakeY           = bottomRightY / 2
+	topLeftX     int           = 1
+	topLeftY     int           = 0
+	bottomRightX int           = 60
+	bottomRightY int           = 20
+	snakeX       int           = bottomRightX / 2
+	snakeY       int           = bottomRightY / 2
+	idle         int           = -1
+	left         int           = 0
+	right        int           = 1
+	up           int           = 2
+	down         int           = 3
+	speed        time.Duration = 200
 )
 
 func drawTopLine() {
@@ -106,8 +113,9 @@ func redrawAll(snake snake) {
 }
 
 type snake struct {
-	x int
-	y int
+	x         int
+	y         int
+	direction int
 }
 
 func (s *snake) moveUp() {
@@ -115,6 +123,7 @@ func (s *snake) moveUp() {
 	if s.y <= topLeftY {
 		s.y = bottomRightY
 	}
+	s.direction = up
 }
 
 func (s *snake) moveDown() {
@@ -122,19 +131,34 @@ func (s *snake) moveDown() {
 	if s.y >= bottomRightY {
 		s.y = topLeftY + 1
 	}
+	s.direction = down
 }
 
 func (s *snake) moveLeft() {
-	s.x--
+	s.x -= 2
 	if s.x <= topLeftX+1 {
 		s.x = bottomRightX - 2
 	}
+	s.direction = left
 }
 
 func (s *snake) moveRight() {
-	s.x++
+	s.x += 2
 	if s.x >= bottomRightX-1 {
 		s.x = topLeftX + 2
+	}
+	s.direction = right
+}
+
+func (s *snake) move() {
+	if s.direction == left {
+		s.moveLeft()
+	} else if s.direction == right {
+		s.moveRight()
+	} else if s.direction == up {
+		s.moveUp()
+	} else if s.direction == down {
+		s.moveDown()
 	}
 }
 
@@ -144,24 +168,43 @@ func runGame() {
 		errorAndExit(err)
 	}
 	defer termbox.Close()
-	snake := snake{x: snakeX, y: snakeY}
+	snake := snake{x: snakeX, y: snakeY, direction: idle}
 	redrawAll(snake)
-mainLoop:
+
+	ticker := time.NewTicker(speed * time.Millisecond)
+
+	eventQueue := make(chan termbox.Event)
+	go func() {
+		for {
+			eventQueue <- termbox.PollEvent()
+		}
+	}()
+loop:
 	for {
-		switch ev := termbox.PollEvent(); ev.Type {
-		case termbox.EventKey:
+		select {
+		case ev := <-eventQueue:
 			switch ev.Key {
 			case termbox.KeyEsc:
-				break mainLoop
+				break loop
 			case termbox.KeyArrowUp:
-				snake.moveUp()
+				if snake.direction != up {
+					snake.moveUp()
+				}
 			case termbox.KeyArrowDown:
-				snake.moveDown()
+				if snake.direction != down {
+					snake.moveDown()
+				}
 			case termbox.KeyArrowLeft:
-				snake.moveLeft()
+				if snake.direction != left {
+					snake.moveLeft()
+				}
 			case termbox.KeyArrowRight:
-				snake.moveRight()
+				if snake.direction != right {
+					snake.moveRight()
+				}
 			}
+		case <-ticker.C:
+			snake.move()
 		}
 		redrawAll(snake)
 	}
