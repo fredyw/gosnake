@@ -1,2 +1,2 @@
 # gosnake
-A snake game written in Go
+A CLI snake game written in Go.
