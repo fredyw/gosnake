@@ -29,55 +29,57 @@ import (
 )
 
 const (
-	x1 int = 1
-	y1 int = 0
-	x2 int = 60
-	y2 int = 20
+	topLeftX     int = 1
+	topLeftY     int = 0
+	bottomRightX int = 60
+	bottomRightY int = 20
+	snakeX           = bottomRightX / 2
+	snakeY           = bottomRightY / 2
 )
 
 func drawTopLine() {
 	colorDefault := termbox.ColorDefault
-	for i := x1; i <= x2; i++ {
+	for i := topLeftX; i <= bottomRightX; i++ {
 		var c rune
-		if i == x1 {
+		if i == topLeftX {
 			c = '\u250c'
-		} else if i == x2 {
+		} else if i == bottomRightX {
 			c = '\u2510'
 		} else {
 			c = '\u2500'
 		}
-		termbox.SetCell(i, y1, c, colorDefault, colorDefault)
+		termbox.SetCell(i, topLeftY, c, colorDefault, colorDefault)
 	}
 }
 
 func drawLeftLine() {
 	colorDefault := termbox.ColorDefault
-	for i := y1 + 1; i <= y2; i++ {
+	for i := topLeftY + 1; i <= bottomRightY; i++ {
 		c := '\u2502'
-		termbox.SetCell(x1, i, c, colorDefault, colorDefault)
+		termbox.SetCell(topLeftX, i, c, colorDefault, colorDefault)
 	}
 }
 
 func drawRightLine() {
 	colorDefault := termbox.ColorDefault
-	for i := x1; i <= x2; i++ {
+	for i := topLeftX; i <= bottomRightX; i++ {
 		var c rune
-		if i == x1 {
+		if i == topLeftX {
 			c = '\u2514'
-		} else if i == x2 {
+		} else if i == bottomRightX {
 			c = '\u2518'
 		} else {
 			c = '\u2500'
 		}
-		termbox.SetCell(i, y2+1, c, colorDefault, colorDefault)
+		termbox.SetCell(i, bottomRightY+1, c, colorDefault, colorDefault)
 	}
 }
 
 func drawBottomLine() {
 	colorDefault := termbox.ColorDefault
-	for i := y1 + 1; i <= y2; i++ {
+	for i := topLeftY + 1; i <= bottomRightY; i++ {
 		c := '\u2502'
-		termbox.SetCell(x2, i, c, colorDefault, colorDefault)
+		termbox.SetCell(bottomRightX, i, c, colorDefault, colorDefault)
 	}
 }
 
@@ -88,13 +90,52 @@ func drawBox() {
 	drawBottomLine()
 }
 
-func redrawAll() {
+func drawSnake(snake snake) {
+	colorDefault := termbox.ColorDefault
+	termbox.SetCell(snake.x, snake.y, '@', colorDefault, colorDefault)
+}
+
+func redrawAll(snake snake) {
 	colorDefault := termbox.ColorDefault
 	termbox.Clear(colorDefault, colorDefault)
 
 	drawBox()
+	drawSnake(snake)
 
 	termbox.Flush()
+}
+
+type snake struct {
+	x int
+	y int
+}
+
+func (s *snake) moveUp() {
+	s.y--
+	if s.y <= topLeftY {
+		s.y = bottomRightY
+	}
+}
+
+func (s *snake) moveDown() {
+	s.y++
+	if s.y >= bottomRightY {
+		s.y = topLeftY + 1
+	}
+}
+
+func (s *snake) moveLeft() {
+	s.x--
+	if s.x <= topLeftX+1 {
+		s.x = bottomRightX - 2
+	}
+}
+
+func (s *snake) moveRight() {
+	s.x++
+	if s.x >= bottomRightX-1 {
+		s.x = topLeftX + 2
+	}
 }
 
 func runGame() {
@@ -103,7 +144,8 @@ func runGame() {
 		errorAndExit(err)
 	}
 	defer termbox.Close()
-	redrawAll()
+	snake := snake{x: snakeX, y: snakeY}
+	redrawAll(snake)
 mainLoop:
 	for {
 		switch ev := termbox.PollEvent(); ev.Type {
@@ -111,9 +153,17 @@ mainLoop:
 			switch ev.Key {
 			case termbox.KeyEsc:
 				break mainLoop
+			case termbox.KeyArrowUp:
+				snake.moveUp()
+			case termbox.KeyArrowDown:
+				snake.moveDown()
+			case termbox.KeyArrowLeft:
+				snake.moveLeft()
+			case termbox.KeyArrowRight:
+				snake.moveRight()
 			}
 		}
-		redrawAll()
+		redrawAll(snake)
 	}
 }
 
