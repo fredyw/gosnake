@@ -22,5 +22,106 @@
 
 package main
 
+import (
+	"fmt"
+	"github.com/nsf/termbox-go"
+	"os"
+)
+
+const (
+	x1 int = 1
+	y1 int = 0
+	x2 int = 60
+	y2 int = 20
+)
+
+func drawTopLine() {
+	colorDefault := termbox.ColorDefault
+	for i := x1; i <= x2; i++ {
+		var c rune
+		if i == x1 {
+			c = '\u250c'
+		} else if i == x2 {
+			c = '\u2510'
+		} else {
+			c = '\u2500'
+		}
+		termbox.SetCell(i, y1, c, colorDefault, colorDefault)
+	}
+}
+
+func drawLeftLine() {
+	colorDefault := termbox.ColorDefault
+	for i := y1 + 1; i <= y2; i++ {
+		c := '\u2502'
+		termbox.SetCell(x1, i, c, colorDefault, colorDefault)
+	}
+}
+
+func drawRightLine() {
+	colorDefault := termbox.ColorDefault
+	for i := x1; i <= x2; i++ {
+		var c rune
+		if i == x1 {
+			c = '\u2514'
+		} else if i == x2 {
+			c = '\u2518'
+		} else {
+			c = '\u2500'
+		}
+		termbox.SetCell(i, y2+1, c, colorDefault, colorDefault)
+	}
+}
+
+func drawBottomLine() {
+	colorDefault := termbox.ColorDefault
+	for i := y1 + 1; i <= y2; i++ {
+		c := '\u2502'
+		termbox.SetCell(x2, i, c, colorDefault, colorDefault)
+	}
+}
+
+func drawBox() {
+	drawTopLine()
+	drawLeftLine()
+	drawRightLine()
+	drawBottomLine()
+}
+
+func redrawAll() {
+	colorDefault := termbox.ColorDefault
+	termbox.Clear(colorDefault, colorDefault)
+
+	drawBox()
+
+	termbox.Flush()
+}
+
+func runGame() {
+	err := termbox.Init()
+	if err != nil {
+		errorAndExit(err)
+	}
+	defer termbox.Close()
+	redrawAll()
+mainLoop:
+	for {
+		switch ev := termbox.PollEvent(); ev.Type {
+		case termbox.EventKey:
+			switch ev.Key {
+			case termbox.KeyEsc:
+				break mainLoop
+			}
+		}
+		redrawAll()
+	}
+}
+
+func errorAndExit(message interface{}) {
+	fmt.Println(message)
+	os.Exit(1)
+}
+
 func main() {
+	runGame()
 }
