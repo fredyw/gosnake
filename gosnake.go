@@ -41,7 +41,7 @@ const (
 	right        int           = 1
 	up           int           = 2
 	down         int           = 3
-	speed        time.Duration = 500
+	speed        time.Duration = 400
 	xStep        int           = 2
 	yStep        int           = 1
 )
@@ -218,27 +218,34 @@ func (s *snake) moveRight() {
 
 func (s *snake) move(direction int) {
 	if s.direction == idle {
-		if direction == left {
-			s.moveLeft()
-		} else if direction == right {
-			s.moveRight()
-		} else if direction == up {
-			s.moveUp()
-		} else if direction == down {
-			s.moveDown()
+		if direction == left || direction == right || direction == up || direction == down {
+			s.direction = direction
 		}
 	} else {
 		// the snake can't go backward
 		if direction == left && !(s.direction == left || s.direction == right) {
-			s.moveLeft()
+			s.direction = left
 		} else if direction == right && !(s.direction == left || s.direction == right) {
-			s.moveRight()
+			s.direction = right
 		} else if direction == up && !(s.direction == up || s.direction == down) {
-			s.moveUp()
+			s.direction = up
 		} else if direction == down && !(s.direction == up || s.direction == down) {
-			s.moveDown()
+			s.direction = down
 		}
 	}
+}
+
+func (s *snake) isFoodEaten(food *food) {
+	head := s.coordinates[0]
+	var newFood []coordinate
+	for _, foodCoord := range food.coordinates {
+		if head.x == foodCoord.x && head.y == foodCoord.y {
+			s.coordinates = append([]coordinate{{x: head.x, y: head.y}}, s.coordinates...)
+		} else {
+			newFood = append(newFood, foodCoord)
+		}
+	}
+	food.coordinates = newFood
 }
 
 func (s *snake) autoMove(food *food) {
@@ -251,17 +258,7 @@ func (s *snake) autoMove(food *food) {
 	} else if s.direction == down {
 		s.moveDown()
 	}
-	// TODO: refactor this
-	head := s.coordinates[0]
-	var newFood []coordinate
-	for _, foodCoord := range food.coordinates {
-		if head.x == foodCoord.x && head.y == foodCoord.y {
-			s.coordinates = append([]coordinate{{x: head.x, y: head.y}}, s.coordinates...)
-		} else {
-			newFood = append(newFood, foodCoord)
-		}
-	}
-	food.coordinates = newFood
+	s.isFoodEaten(food)
 }
 
 func runGame() {
@@ -283,7 +280,7 @@ func runGame() {
 	food := &food{
 		coordinates: []coordinate{
 			coordinate{x: 20, y: 10},
-			coordinate{x: 30, y: 14},
+			coordinate{x: 30, y: 11},
 		},
 	}
 	redrawAll(snake, food)
@@ -299,7 +296,6 @@ func runGame() {
 loop:
 	for {
 		select {
-		// TODO: bug for speed
 		case ev := <-eventQueue:
 			switch ev.Key {
 			case termbox.KeyEsc:
