@@ -41,7 +41,9 @@ const (
 	right        int           = 1
 	up           int           = 2
 	down         int           = 3
-	speed        time.Duration = 200
+	speed        time.Duration = 500
+	xStep        int           = 2
+	yStep        int           = 1
 )
 
 func drawTopLine() {
@@ -97,60 +99,137 @@ func drawBox() {
 	drawBottomLine()
 }
 
-func drawSnake(snake snake) {
+func drawSnake(snake *snake) {
 	colorDefault := termbox.ColorDefault
-	termbox.SetCell(snake.x, snake.y, '@', colorDefault, colorDefault)
+	for _, coordinate := range snake.coordinates {
+		termbox.SetCell(coordinate.x, coordinate.y, '@', colorDefault, colorDefault)
+	}
 }
 
-func redrawAll(snake snake) {
+func drawText(text string) {
+	colorDefault := termbox.ColorDefault
+	x := topLeftX + 1
+	y := bottomRightY + 2
+	for _, ch := range text {
+		termbox.SetCell(x, y, ch, colorDefault, colorDefault)
+		x++
+	}
+}
+
+func drawCoordinates(snake *snake) {
+	text := fmt.Sprintf("x=%d, y=%d", snake.coordinates[0].x, snake.coordinates[0].y)
+	drawText(text)
+}
+
+func redrawAll(snake *snake) {
 	colorDefault := termbox.ColorDefault
 	termbox.Clear(colorDefault, colorDefault)
 
 	drawBox()
 	drawSnake(snake)
+	drawCoordinates(snake)
 
 	termbox.Flush()
 }
 
-type snake struct {
-	x         int
-	y         int
-	direction int
+type coordinate struct {
+	x int
+	y int
 }
 
-func (s *snake) moveUp() {
-	s.y--
-	if s.y <= topLeftY {
-		s.y = bottomRightY
+type snake struct {
+	coordinates []coordinate
+	direction   int
+}
+
+func (s *snake) update(moveHead func(idx int)) {
+	// move the head
+	idx := 0
+	prev := s.coordinates[idx]
+	moveHead(idx)
+	// update the tail
+	for i := idx + 1; i < len(s.coordinates); i++ {
+		tmp := s.coordinates[i]
+		s.coordinates[i].x = prev.x
+		s.coordinates[i].y = prev.y
+		prev = tmp
+	}
+}
+
+func (s *snake) moveUpIdx(idx int) {
+	s.coordinates[idx].y -= yStep
+	if s.coordinates[idx].y <= topLeftY {
+		s.coordinates[idx].y = bottomRightY
 	}
 	s.direction = up
 }
 
-func (s *snake) moveDown() {
-	s.y++
-	if s.y >= bottomRightY {
-		s.y = topLeftY + 1
+func (s *snake) moveUp() {
+	s.update(s.moveUpIdx)
+}
+
+func (s *snake) moveDownIdx(idx int) {
+	s.coordinates[idx].y += yStep
+	if s.coordinates[idx].y >= bottomRightY {
+		s.coordinates[idx].y = topLeftY + yStep
 	}
 	s.direction = down
 }
 
-func (s *snake) moveLeft() {
-	s.x -= 2
-	if s.x <= topLeftX+1 {
-		s.x = bottomRightX - 2
+func (s *snake) moveDown() {
+	s.update(s.moveDownIdx)
+}
+
+func (s *snake) moveLeftIdx(idx int) {
+	s.coordinates[idx].x -= xStep
+	if s.coordinates[idx].x <= topLeftX+1 {
+		s.coordinates[idx].x = bottomRightX - xStep
 	}
 	s.direction = left
 }
 
-func (s *snake) moveRight() {
-	s.x += 2
-	if s.x >= bottomRightX-1 {
-		s.x = topLeftX + 2
+func (s *snake) moveLeft() {
+	s.update(s.moveLeftIdx)
+}
+
+func (s *snake) moveRightIdx(idx int) {
+	s.coordinates[idx].x += xStep
+	if s.coordinates[idx].x >= bottomRightX-1 {
+		s.coordinates[idx].x = topLeftX + xStep
 	}
 	s.direction = right
 }
 
-func (s *snake) move() {
+func (s *snake) moveRight() {
+	s.update(s.moveRightIdx)
+}
+
+func (s *snake) move(direction int) {
+	if s.direction == idle {
+		if direction == left {
+			s.moveLeft()
+		} else if direction == right {
+			s.moveRight()
+		} else if direction == up {
+			s.moveUp()
+		} else if direction == down {
+			s.moveDown()
+		}
+	} else {
+		// the snake can't go backward
+		if direction == left && !(s.direction == left || s.direction == right) {
+			s.moveLeft()
+		} else if direction == right && !(s.direction == left || s.direction == right) {
+			s.moveRight()
+		} else if direction == up && !(s.direction == up || s.direction == down) {
+			s.moveUp()
+		} else if direction == down && !(s.direction == up || s.direction == down) {
+			s.moveDown()
+		}
+	}
+}
+
+func (s *snake) autoMove() {
 	if s.direction == left {
 		s.moveLeft()
 	} else if s.direction == right {
@@ -168,7 +247,15 @@ func runGame() {
 		errorAndExit(err)
 	}
 	defer termbox.Close()
-	snake := snake{x: snakeX, y: snakeY, direction: idle}
+	// TODO: fix initial snake position
+	snake := &snake{
+		coordinates: []coordinate{
+			coordinate{x: snakeX, y: snakeY},
+			coordinate{x: snakeX - xStep, y: snakeY},
+			coordinate{x: snakeX - (xStep * 2), y: snakeY},
+		},
+		direction: idle,
+	}
 	redrawAll(snake)
 
 	ticker := time.NewTicker(speed * time.Millisecond)
@@ -187,24 +274,16 @@ loop:
 			case termbox.KeyEsc:
 				break loop
 			case termbox.KeyArrowUp:
-				if snake.direction != up {
-					snake.moveUp()
-				}
+				snake.move(up)
 			case termbox.KeyArrowDown:
-				if snake.direction != down {
-					snake.moveDown()
-				}
+				snake.move(down)
 			case termbox.KeyArrowLeft:
-				if snake.direction != left {
-					snake.moveLeft()
-				}
+				snake.move(left)
 			case termbox.KeyArrowRight:
-				if snake.direction != right {
-					snake.moveRight()
-				}
+				snake.move(right)
 			}
 		case <-ticker.C:
-			snake.move()
+			snake.autoMove()
 		}
 		redrawAll(snake)
 	}
