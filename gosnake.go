@@ -121,15 +121,27 @@ func drawCoordinates(snake *snake) {
 	drawText(text)
 }
 
-func redrawAll(snake *snake) {
+func drawFood(food *food) {
+	colorDefault := termbox.ColorDefault
+	for _, coordinate := range food.coordinates {
+		termbox.SetCell(coordinate.x, coordinate.y, '\u2665', colorDefault, colorDefault)
+	}
+}
+
+func redrawAll(snake *snake, food *food) {
 	colorDefault := termbox.ColorDefault
 	termbox.Clear(colorDefault, colorDefault)
 
 	drawBox()
 	drawSnake(snake)
+	drawFood(food)
 	drawCoordinates(snake)
 
 	termbox.Flush()
+}
+
+type food struct {
+	coordinates []coordinate
 }
 
 type coordinate struct {
@@ -229,7 +241,7 @@ func (s *snake) move(direction int) {
 	}
 }
 
-func (s *snake) autoMove() {
+func (s *snake) autoMove(food *food) {
 	if s.direction == left {
 		s.moveLeft()
 	} else if s.direction == right {
@@ -239,6 +251,17 @@ func (s *snake) autoMove() {
 	} else if s.direction == down {
 		s.moveDown()
 	}
+	// TODO: refactor this
+	head := s.coordinates[0]
+	var newFood []coordinate
+	for _, foodCoord := range food.coordinates {
+		if head.x == foodCoord.x && head.y == foodCoord.y {
+			s.coordinates = append([]coordinate{{x: head.x, y: head.y}}, s.coordinates...)
+		} else {
+			newFood = append(newFood, foodCoord)
+		}
+	}
+	food.coordinates = newFood
 }
 
 func runGame() {
@@ -256,7 +279,14 @@ func runGame() {
 		},
 		direction: idle,
 	}
-	redrawAll(snake)
+	// TODO: randomize the food
+	food := &food{
+		coordinates: []coordinate{
+			coordinate{x: 20, y: 10},
+			coordinate{x: 30, y: 14},
+		},
+	}
+	redrawAll(snake, food)
 
 	ticker := time.NewTicker(speed * time.Millisecond)
 
@@ -269,6 +299,7 @@ func runGame() {
 loop:
 	for {
 		select {
+		// TODO: bug for speed
 		case ev := <-eventQueue:
 			switch ev.Key {
 			case termbox.KeyEsc:
@@ -283,9 +314,9 @@ loop:
 				snake.move(right)
 			}
 		case <-ticker.C:
-			snake.autoMove()
+			snake.autoMove(food)
 		}
-		redrawAll(snake)
+		redrawAll(snake, food)
 	}
 }
 
