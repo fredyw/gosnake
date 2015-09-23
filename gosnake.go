@@ -41,7 +41,7 @@ const (
 	right        int           = 1
 	up           int           = 2
 	down         int           = 3
-	speed        time.Duration = 400
+	speed        time.Duration = 300
 	xStep        int           = 2
 	yStep        int           = 1
 )
@@ -216,7 +216,7 @@ func (s *snake) moveRight() {
 	s.update(s.moveRightIdx)
 }
 
-func (s *snake) move(direction int) {
+func (s *snake) setDirection(direction int) {
 	if s.direction == idle {
 		if direction == left || direction == right || direction == up || direction == down {
 			s.direction = direction
@@ -248,7 +248,7 @@ func (s *snake) isFoodEaten(food *food) {
 	food.coordinates = newFood
 }
 
-func (s *snake) autoMove(food *food) {
+func (s *snake) move() {
 	if s.direction == left {
 		s.moveLeft()
 	} else if s.direction == right {
@@ -258,6 +258,10 @@ func (s *snake) autoMove(food *food) {
 	} else if s.direction == down {
 		s.moveDown()
 	}
+}
+
+func (s *snake) run(food *food) {
+	s.move()
 	s.isFoodEaten(food)
 }
 
@@ -301,16 +305,16 @@ loop:
 			case termbox.KeyEsc:
 				break loop
 			case termbox.KeyArrowUp:
-				snake.move(up)
+				snake.setDirection(up)
 			case termbox.KeyArrowDown:
-				snake.move(down)
+				snake.setDirection(down)
 			case termbox.KeyArrowLeft:
-				snake.move(left)
+				snake.setDirection(left)
 			case termbox.KeyArrowRight:
-				snake.move(right)
+				snake.setDirection(right)
 			}
 		case <-ticker.C:
-			snake.autoMove(food)
+			snake.run(food)
 		}
 		redrawAll(snake, food)
 	}
