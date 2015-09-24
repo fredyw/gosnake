@@ -44,6 +44,7 @@ const (
 	up           int           = 2
 	down         int           = 3
 	initialSpeed time.Duration = 250
+	speedStep    time.Duration = 20
 	xStep        int           = 2
 	yStep        int           = 1
 	numFood      int           = 15
@@ -379,7 +380,7 @@ exitGame:
 		food := initFood(snake)
 		game.snake = *snake
 		game.food = *food
-		game.speed -= time.Duration(20)
+		game.speed -= speedStep
 		game.level++
 		ticker := time.NewTicker(game.speed * time.Millisecond)
 		redrawAll(game)
