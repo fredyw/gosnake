@@ -147,9 +147,16 @@ func drawFood(food *food) {
 	}
 }
 
-func drawAuthor() {
+func drawGameInfo() {
 	x := leftX + 1
 	y := rightY + 2
+	text := "Press ESC to exit the game"
+	drawText(x, y, text)
+}
+
+func drawAuthor() {
+	x := leftX + 1
+	y := rightY + 3
 	text := fmt.Sprintf("Created By: %s", author)
 	drawText(x, y, text)
 }
@@ -163,6 +170,7 @@ func redrawAll(game *game) {
 	drawBox()
 	drawSnake(&game.snake)
 	drawFood(&game.food)
+	drawGameInfo()
 	drawAuthor()
 
 	termbox.Flush()
