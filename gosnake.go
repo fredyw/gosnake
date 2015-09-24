@@ -31,23 +31,24 @@ import (
 )
 
 const (
-	author      string        = "Fredy Wijaya"
-	leftX       int           = 1
-	leftY       int           = 1
-	rightX      int           = 60
-	rightY      int           = 20
-	snakeX      int           = rightX / 2
-	snakeY      int           = rightY / 2
-	idle        int           = -1
-	left        int           = 0
-	right       int           = 1
-	up          int           = 2
-	down        int           = 3
-	speed       time.Duration = 300
-	xStep       int           = 2
-	yStep       int           = 1
-	numFood     int           = 15
-	scoreWeight int           = 10
+	author       string        = "Fredy Wijaya"
+	leftX        int           = 1
+	leftY        int           = 1
+	rightX       int           = 60
+	rightY       int           = 20
+	snakeX       int           = rightX / 2
+	snakeY       int           = rightY / 2
+	idle         int           = -1
+	left         int           = 0
+	right        int           = 1
+	up           int           = 2
+	down         int           = 3
+	initialSpeed time.Duration = 250
+	xStep        int           = 2
+	yStep        int           = 1
+	numFood      int           = 15
+	scoreWeight  int           = 10
+	maxLevel     int           = 10
 )
 
 func drawTopLine() {
@@ -148,7 +149,7 @@ func drawFood(food *food) {
 func drawAuthor() {
 	x := leftX + 1
 	y := rightY + 2
-	text := fmt.Sprintf("Author: %s", author)
+	text := fmt.Sprintf("Created By: %s", author)
 	drawText(x, y, text)
 }
 
@@ -169,6 +170,7 @@ func redrawAll(game *game) {
 type game struct {
 	score int
 	level int
+	speed time.Duration
 	snake snake
 	food  food
 }
@@ -297,11 +299,16 @@ func (g *game) isFoodEaten(snake *snake, food *food) bool {
 	return eaten
 }
 
-func (g *game) run() {
+func (g *game) run() bool {
 	g.snake.move()
 	if g.isFoodEaten(&g.snake, &g.food) {
 		g.score += scoreWeight
 	}
+	if len(g.food.coordinates) == 0 {
+		return true
+	}
+	// TODO: snake will die if it eats its own body
+	return false
 }
 
 func initSnake() *snake {
@@ -353,17 +360,6 @@ func runGame() {
 		errorAndExit(err)
 	}
 	defer termbox.Close()
-	snake := initSnake()
-	food := initFood(snake)
-	game := &game{
-		score: 0,
-		level: 1,
-		snake: *snake,
-		food:  *food,
-	}
-	redrawAll(game)
-
-	ticker := time.NewTicker(speed * time.Millisecond)
 
 	eventQueue := make(chan termbox.Event)
 	go func() {
@@ -371,26 +367,45 @@ func runGame() {
 			eventQueue <- termbox.PollEvent()
 		}
 	}()
-loop:
+
+	game := &game{
+		score: 0,
+		level: 0,
+		speed: initialSpeed,
+	}
+exitGame:
 	for {
-		select {
-		case ev := <-eventQueue:
-			switch ev.Key {
-			case termbox.KeyEsc:
-				break loop
-			case termbox.KeyArrowUp:
-				game.snake.setDirection(up)
-			case termbox.KeyArrowDown:
-				game.snake.setDirection(down)
-			case termbox.KeyArrowLeft:
-				game.snake.setDirection(left)
-			case termbox.KeyArrowRight:
-				game.snake.setDirection(right)
-			}
-		case <-ticker.C:
-			game.run()
-		}
+		snake := initSnake()
+		food := initFood(snake)
+		game.snake = *snake
+		game.food = *food
+		game.speed -= time.Duration(20)
+		game.level++
+		ticker := time.NewTicker(game.speed * time.Millisecond)
 		redrawAll(game)
+	nextLevel:
+		for {
+			select {
+			case ev := <-eventQueue:
+				switch ev.Key {
+				case termbox.KeyEsc:
+					break exitGame
+				case termbox.KeyArrowUp:
+					game.snake.setDirection(up)
+				case termbox.KeyArrowDown:
+					game.snake.setDirection(down)
+				case termbox.KeyArrowLeft:
+					game.snake.setDirection(left)
+				case termbox.KeyArrowRight:
+					game.snake.setDirection(right)
+				}
+			case <-ticker.C:
+				if game.run() {
+					break nextLevel
+				}
+			}
+			redrawAll(game)
+		}
 	}
 }
 
