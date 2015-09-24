@@ -101,8 +101,14 @@ func drawBox() {
 
 func drawSnake(snake *snake) {
 	colorDefault := termbox.ColorDefault
-	for _, coordinate := range snake.coordinates {
-		termbox.SetCell(coordinate.x, coordinate.y, '@', colorDefault, colorDefault)
+	for idx, coordinate := range snake.coordinates {
+		var ch rune
+		if idx == 0 {
+			ch = '@'
+		} else {
+			ch = '*'
+		}
+		termbox.SetCell(coordinate.x, coordinate.y, ch, colorDefault, colorDefault)
 	}
 }
 
