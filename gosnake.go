@@ -31,66 +31,68 @@ import (
 )
 
 const (
-	topLeftX     int           = 1
-	topLeftY     int           = 1
-	bottomRightX int           = 60
-	bottomRightY int           = 20
-	snakeX       int           = bottomRightX / 2
-	snakeY       int           = bottomRightY / 2
-	idle         int           = -1
-	left         int           = 0
-	right        int           = 1
-	up           int           = 2
-	down         int           = 3
-	speed        time.Duration = 300
-	xStep        int           = 2
-	yStep        int           = 1
-	numFood      int           = 15
+	author      string        = "Fredy Wijaya"
+	leftX       int           = 1
+	leftY       int           = 1
+	rightX      int           = 60
+	rightY      int           = 20
+	snakeX      int           = rightX / 2
+	snakeY      int           = rightY / 2
+	idle        int           = -1
+	left        int           = 0
+	right       int           = 1
+	up          int           = 2
+	down        int           = 3
+	speed       time.Duration = 300
+	xStep       int           = 2
+	yStep       int           = 1
+	numFood     int           = 15
+	scoreWeight int           = 10
 )
 
 func drawTopLine() {
 	colorDefault := termbox.ColorDefault
-	for i := topLeftX; i <= bottomRightX; i++ {
+	for i := leftX; i <= rightX; i++ {
 		var c rune
-		if i == topLeftX {
+		if i == leftX {
 			c = '\u250c'
-		} else if i == bottomRightX {
+		} else if i == rightX {
 			c = '\u2510'
 		} else {
 			c = '\u2500'
 		}
-		termbox.SetCell(i, topLeftY, c, colorDefault, colorDefault)
+		termbox.SetCell(i, leftY, c, colorDefault, colorDefault)
 	}
 }
 
 func drawLeftLine() {
 	colorDefault := termbox.ColorDefault
-	for i := topLeftY + 1; i <= bottomRightY; i++ {
+	for i := leftY + 1; i <= rightY; i++ {
 		c := '\u2502'
-		termbox.SetCell(topLeftX, i, c, colorDefault, colorDefault)
+		termbox.SetCell(leftX, i, c, colorDefault, colorDefault)
 	}
 }
 
 func drawRightLine() {
 	colorDefault := termbox.ColorDefault
-	for i := topLeftX; i <= bottomRightX; i++ {
+	for i := leftX; i <= rightX; i++ {
 		var c rune
-		if i == topLeftX {
+		if i == leftX {
 			c = '\u2514'
-		} else if i == bottomRightX {
+		} else if i == rightX {
 			c = '\u2518'
 		} else {
 			c = '\u2500'
 		}
-		termbox.SetCell(i, bottomRightY+1, c, colorDefault, colorDefault)
+		termbox.SetCell(i, rightY+1, c, colorDefault, colorDefault)
 	}
 }
 
 func drawBottomLine() {
 	colorDefault := termbox.ColorDefault
-	for i := topLeftY + 1; i <= bottomRightY; i++ {
+	for i := leftY + 1; i <= rightY; i++ {
 		c := '\u2502'
-		termbox.SetCell(bottomRightX, i, c, colorDefault, colorDefault)
+		termbox.SetCell(rightX, i, c, colorDefault, colorDefault)
 	}
 }
 
@@ -114,15 +116,18 @@ func drawSnake(snake *snake) {
 	}
 }
 
-func drawScore() {
-	colorDefault := termbox.ColorDefault
-	x := topLeftX + 1
-	y := topLeftY - 1
-	text := "Score:"
-	for _, ch := range text {
-		termbox.SetCell(x, y, ch, colorDefault, colorDefault)
-		x++
-	}
+func drawLevel(level int) {
+	x := leftX + 1
+	y := leftY - 1
+	text := fmt.Sprintf("Level: %d", level)
+	drawText(x, y, text)
+}
+
+func drawScore(score int) {
+	x := rightX - 11
+	y := leftY - 1
+	text := fmt.Sprintf("Score: %d", score)
+	drawText(x, y, text)
 }
 
 func drawText(x, y int, text string) {
@@ -133,13 +138,6 @@ func drawText(x, y int, text string) {
 	}
 }
 
-func drawCoordinates(snake *snake) {
-	text := fmt.Sprintf("x=%d, y=%d", snake.coordinates[0].x, snake.coordinates[0].y)
-	x := topLeftX + 1
-	y := bottomRightY + 2
-	drawText(x, y, text)
-}
-
 func drawFood(food *food) {
 	colorDefault := termbox.ColorDefault
 	for _, coordinate := range food.coordinates {
@@ -147,15 +145,23 @@ func drawFood(food *food) {
 	}
 }
 
-func redrawAll(snake *snake, food *food) {
+func drawAuthor() {
+	x := leftX + 1
+	y := rightY + 2
+	text := fmt.Sprintf("Author: %s", author)
+	drawText(x, y, text)
+}
+
+func redrawAll(game *game) {
 	colorDefault := termbox.ColorDefault
 	termbox.Clear(colorDefault, colorDefault)
 
-	drawScore()
+	drawLevel(game.level)
+	drawScore(game.score)
 	drawBox()
-	drawSnake(snake)
-	drawFood(food)
-	drawCoordinates(snake)
+	drawSnake(&game.snake)
+	drawFood(&game.food)
+	drawAuthor()
 
 	termbox.Flush()
 }
@@ -163,6 +169,8 @@ func redrawAll(snake *snake, food *food) {
 type game struct {
 	score int
 	level int
+	snake snake
+	food  food
 }
 
 type food struct {
@@ -195,8 +203,8 @@ func (s *snake) update(moveHead func(idx int)) {
 
 func (s *snake) moveUpIdx(idx int) {
 	s.coordinates[idx].y -= yStep
-	if s.coordinates[idx].y <= topLeftY {
-		s.coordinates[idx].y = bottomRightY
+	if s.coordinates[idx].y <= leftY {
+		s.coordinates[idx].y = rightY
 	}
 	s.direction = up
 }
@@ -207,8 +215,8 @@ func (s *snake) moveUp() {
 
 func (s *snake) moveDownIdx(idx int) {
 	s.coordinates[idx].y += yStep
-	if s.coordinates[idx].y >= bottomRightY {
-		s.coordinates[idx].y = topLeftY + yStep
+	if s.coordinates[idx].y >= rightY {
+		s.coordinates[idx].y = leftY + yStep
 	}
 	s.direction = down
 }
@@ -219,8 +227,8 @@ func (s *snake) moveDown() {
 
 func (s *snake) moveLeftIdx(idx int) {
 	s.coordinates[idx].x -= xStep
-	if s.coordinates[idx].x <= topLeftX+1 {
-		s.coordinates[idx].x = bottomRightX - xStep
+	if s.coordinates[idx].x <= leftX+1 {
+		s.coordinates[idx].x = rightX - xStep
 	}
 	s.direction = left
 }
@@ -231,8 +239,8 @@ func (s *snake) moveLeft() {
 
 func (s *snake) moveRightIdx(idx int) {
 	s.coordinates[idx].x += xStep
-	if s.coordinates[idx].x >= bottomRightX-1 {
-		s.coordinates[idx].x = topLeftX + xStep
+	if s.coordinates[idx].x >= rightX-1 {
+		s.coordinates[idx].x = leftX + xStep
 	}
 	s.direction = right
 }
@@ -260,19 +268,6 @@ func (s *snake) setDirection(direction int) {
 	}
 }
 
-func (s *snake) isFoodEaten(food *food) {
-	head := s.coordinates[0]
-	var newFood []coordinate
-	for _, foodCoord := range food.coordinates {
-		if head.x == foodCoord.x && head.y == foodCoord.y {
-			s.coordinates = append([]coordinate{{x: head.x, y: head.y}}, s.coordinates...)
-		} else {
-			newFood = append(newFood, foodCoord)
-		}
-	}
-	food.coordinates = newFood
-}
-
 func (s *snake) move() {
 	if s.direction == left {
 		s.moveLeft()
@@ -285,9 +280,28 @@ func (s *snake) move() {
 	}
 }
 
-func (s *snake) run(food *food) {
-	s.move()
-	s.isFoodEaten(food)
+func (g *game) isFoodEaten(snake *snake, food *food) bool {
+	head := snake.coordinates[0]
+	var newFood []coordinate
+	eaten := false
+	for _, foodCoord := range food.coordinates {
+		if head.x == foodCoord.x && head.y == foodCoord.y {
+			snake.coordinates = append([]coordinate{{x: head.x, y: head.y}},
+				snake.coordinates...)
+			eaten = true
+		} else {
+			newFood = append(newFood, foodCoord)
+		}
+	}
+	food.coordinates = newFood
+	return eaten
+}
+
+func (g *game) run() {
+	g.snake.move()
+	if g.isFoodEaten(&g.snake, &g.food) {
+		g.score += scoreWeight
+	}
 }
 
 func initSnake() *snake {
@@ -308,12 +322,12 @@ func initFood(snake *snake) *food {
 	rand.Seed(time.Now().UTC().UnixNano())
 	nFood := 0
 	for nFood < numFood {
-		x := rand.Intn((bottomRightX-topLeftX)+1) + topLeftX
-		y := rand.Intn((bottomRightY-topLeftY)+1) + topLeftY
-		if x%2 != 0 || x <= topLeftX+1 || x >= bottomRightX {
+		x := rand.Intn((rightX-leftX)+1) + leftX
+		y := rand.Intn((rightY-leftY)+1) + leftY
+		if x%2 != 0 || x <= leftX+1 || x >= rightX {
 			continue
 		}
-		if y <= topLeftY || y >= bottomRightY {
+		if y <= leftY || y >= rightY {
 			continue
 		}
 		good := true
@@ -341,7 +355,13 @@ func runGame() {
 	defer termbox.Close()
 	snake := initSnake()
 	food := initFood(snake)
-	redrawAll(snake, food)
+	game := &game{
+		score: 0,
+		level: 1,
+		snake: *snake,
+		food:  *food,
+	}
+	redrawAll(game)
 
 	ticker := time.NewTicker(speed * time.Millisecond)
 
@@ -359,18 +379,18 @@ loop:
 			case termbox.KeyEsc:
 				break loop
 			case termbox.KeyArrowUp:
-				snake.setDirection(up)
+				game.snake.setDirection(up)
 			case termbox.KeyArrowDown:
-				snake.setDirection(down)
+				game.snake.setDirection(down)
 			case termbox.KeyArrowLeft:
-				snake.setDirection(left)
+				game.snake.setDirection(left)
 			case termbox.KeyArrowRight:
-				snake.setDirection(right)
+				game.snake.setDirection(right)
 			}
 		case <-ticker.C:
-			snake.run(food)
+			game.run()
 		}
-		redrawAll(snake, food)
+		redrawAll(game)
 	}
 }
 
