@@ -25,13 +25,14 @@ package main
 import (
 	"fmt"
 	"github.com/nsf/termbox-go"
+	"math/rand"
 	"os"
 	"time"
 )
 
 const (
 	topLeftX     int           = 1
-	topLeftY     int           = 0
+	topLeftY     int           = 1
 	bottomRightX int           = 60
 	bottomRightY int           = 20
 	snakeX       int           = bottomRightX / 2
@@ -44,6 +45,7 @@ const (
 	speed        time.Duration = 300
 	xStep        int           = 2
 	yStep        int           = 1
+	numFood      int           = 15
 )
 
 func drawTopLine() {
@@ -112,10 +114,19 @@ func drawSnake(snake *snake) {
 	}
 }
 
-func drawText(text string) {
+func drawScore() {
 	colorDefault := termbox.ColorDefault
 	x := topLeftX + 1
-	y := bottomRightY + 2
+	y := topLeftY - 1
+	text := "Score:"
+	for _, ch := range text {
+		termbox.SetCell(x, y, ch, colorDefault, colorDefault)
+		x++
+	}
+}
+
+func drawText(x, y int, text string) {
+	colorDefault := termbox.ColorDefault
 	for _, ch := range text {
 		termbox.SetCell(x, y, ch, colorDefault, colorDefault)
 		x++
@@ -124,7 +135,9 @@ func drawText(text string) {
 
 func drawCoordinates(snake *snake) {
 	text := fmt.Sprintf("x=%d, y=%d", snake.coordinates[0].x, snake.coordinates[0].y)
-	drawText(text)
+	x := topLeftX + 1
+	y := bottomRightY + 2
+	drawText(x, y, text)
 }
 
 func drawFood(food *food) {
@@ -138,12 +151,18 @@ func redrawAll(snake *snake, food *food) {
 	colorDefault := termbox.ColorDefault
 	termbox.Clear(colorDefault, colorDefault)
 
+	drawScore()
 	drawBox()
 	drawSnake(snake)
 	drawFood(food)
 	drawCoordinates(snake)
 
 	termbox.Flush()
+}
+
+type game struct {
+	score int
+	level int
 }
 
 type food struct {
@@ -271,13 +290,8 @@ func (s *snake) run(food *food) {
 	s.isFoodEaten(food)
 }
 
-func runGame() {
-	err := termbox.Init()
-	if err != nil {
-		errorAndExit(err)
-	}
-	defer termbox.Close()
-	// TODO: fix initial snake position
+func initSnake() *snake {
+	// TODO: fix the initial snake position
 	snake := &snake{
 		coordinates: []coordinate{
 			coordinate{x: snakeX, y: snakeY},
@@ -286,13 +300,47 @@ func runGame() {
 		},
 		direction: idle,
 	}
-	// TODO: randomize the food
-	food := &food{
-		coordinates: []coordinate{
-			coordinate{x: 20, y: 10},
-			coordinate{x: 30, y: 11},
-		},
+	return snake
+}
+
+func initFood(snake *snake) *food {
+	var foodCoordinates []coordinate
+	rand.Seed(time.Now().UTC().UnixNano())
+	nFood := 0
+	for nFood < numFood {
+		x := rand.Intn((bottomRightX-topLeftX)+1) + topLeftX
+		y := rand.Intn((bottomRightY-topLeftY)+1) + topLeftY
+		if x%2 != 0 || x <= topLeftX+1 || x >= bottomRightX {
+			continue
+		}
+		if y <= topLeftY || y >= bottomRightY {
+			continue
+		}
+		good := true
+		for _, snakeCoordinate := range snake.coordinates {
+			if snakeCoordinate.x == x && snakeCoordinate.y == y {
+				good = false
+				break
+			}
+		}
+		if good {
+			foodCoordinates = append(foodCoordinates,
+				coordinate{x: x, y: y})
+			nFood++
+		}
 	}
+	food := &food{coordinates: foodCoordinates}
+	return food
+}
+
+func runGame() {
+	err := termbox.Init()
+	if err != nil {
+		errorAndExit(err)
+	}
+	defer termbox.Close()
+	snake := initSnake()
+	food := initFood(snake)
 	redrawAll(snake, food)
 
 	ticker := time.NewTicker(speed * time.Millisecond)
