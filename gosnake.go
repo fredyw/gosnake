@@ -299,14 +299,18 @@ func (s *snake) move() {
 	}
 }
 
+func (s *snake) growTail() {
+	x := s.coordinates[0].x
+	y := s.coordinates[0].y
+	s.coordinates = append(s.coordinates, coordinate{x, y})
+}
+
 func (g *game) isFoodEaten(snake *snake, food *food) bool {
 	head := snake.coordinates[0]
 	var newFood []coordinate
 	eaten := false
 	for _, foodCoord := range food.coordinates {
 		if head.x == foodCoord.x && head.y == foodCoord.y {
-			snake.coordinates = append([]coordinate{{x: head.x, y: head.y}},
-				snake.coordinates...)
 			eaten = true
 		} else {
 			newFood = append(newFood, foodCoord)
@@ -334,6 +338,7 @@ func (g *game) run() gameState {
 	g.snake.move()
 	if g.isFoodEaten(&g.snake, &g.food) {
 		g.score += scoreWeight
+		g.snake.growTail()
 	} else {
 		if g.isSnakeEaten(&g.snake) {
 			return lose
