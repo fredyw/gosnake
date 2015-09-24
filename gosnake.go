@@ -50,7 +50,34 @@ const (
 	numFood      int           = 15
 	scoreWeight  int           = 10
 	maxLevel     int           = 10
+	inProgress   gameState     = 0
+	lose         gameState     = 1
+	win          gameState     = 2
 )
+
+type gameState int
+
+type game struct {
+	score int
+	level int
+	speed time.Duration
+	snake snake
+	food  food
+}
+
+type food struct {
+	coordinates []coordinate
+}
+
+type coordinate struct {
+	x int
+	y int
+}
+
+type snake struct {
+	coordinates []coordinate
+	direction   int
+}
 
 func drawTopLine() {
 	colorDefault := termbox.ColorDefault
@@ -161,7 +188,7 @@ func drawAuthor() {
 	drawText(x, y, text)
 }
 
-func redrawAll(game *game) {
+func redrawAll(game *game, drawFunc func()) {
 	colorDefault := termbox.ColorDefault
 	termbox.Clear(colorDefault, colorDefault)
 
@@ -172,30 +199,11 @@ func redrawAll(game *game) {
 	drawFood(&game.food)
 	drawGameInfo()
 	drawAuthor()
+	if drawFunc != nil {
+		drawFunc()
+	}
 
 	termbox.Flush()
-}
-
-type game struct {
-	score int
-	level int
-	speed time.Duration
-	snake snake
-	food  food
-}
-
-type food struct {
-	coordinates []coordinate
-}
-
-type coordinate struct {
-	x int
-	y int
-}
-
-type snake struct {
-	coordinates []coordinate
-	direction   int
 }
 
 func (s *snake) update(moveHead func(idx int)) {
@@ -308,16 +316,37 @@ func (g *game) isFoodEaten(snake *snake, food *food) bool {
 	return eaten
 }
 
-func (g *game) run() bool {
+func (g *game) isSnakeEaten(snake *snake) bool {
+	for idx1, c1 := range snake.coordinates {
+		for idx2, c2 := range snake.coordinates {
+			if idx1 == idx2 {
+				continue
+			}
+			if c1.x == c2.x && c1.y == c2.y {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (g *game) run() gameState {
 	g.snake.move()
 	if g.isFoodEaten(&g.snake, &g.food) {
 		g.score += scoreWeight
+	} else {
+		if g.isSnakeEaten(&g.snake) {
+			return lose
+		}
 	}
 	if len(g.food.coordinates) == 0 {
-		return true
+		return win
 	}
-	// TODO: snake will die if it eats its own body
-	return false
+	return inProgress
+}
+
+func (g *game) isComplete() bool {
+	return g.level >= maxLevel
 }
 
 func initSnake() *snake {
@@ -382,6 +411,8 @@ func runGame() {
 		level: 0,
 		speed: initialSpeed,
 	}
+	gameDone := false
+	var state gameState
 exitGame:
 	for {
 		snake := initSnake()
@@ -391,7 +422,7 @@ exitGame:
 		game.speed -= speedStep
 		game.level++
 		ticker := time.NewTicker(game.speed * time.Millisecond)
-		redrawAll(game)
+		redrawAll(game, nil)
 	nextLevel:
 		for {
 			select {
@@ -409,11 +440,43 @@ exitGame:
 					game.snake.setDirection(right)
 				}
 			case <-ticker.C:
-				if game.run() {
-					break nextLevel
+				state = game.run()
+				if state == win {
+					if !game.isComplete() {
+						break nextLevel
+					}
+					gameDone = true
+					break exitGame
+				} else if state == lose {
+					gameDone = true
+					break exitGame
 				}
 			}
-			redrawAll(game)
+			redrawAll(game, nil)
+		}
+	}
+
+	if gameDone {
+		redrawAll(game, func() {
+			var text string
+			if state == win {
+				text = "You Won the Game!"
+			} else if state == lose {
+				text = "Game Over!"
+			}
+			x := ((rightX - leftY) / 2) - (len(text) / 2) + 2
+			y := snakeY
+			drawText(x, y, text)
+		})
+	quit:
+		for {
+			switch ev := termbox.PollEvent(); ev.Type {
+			case termbox.EventKey:
+				switch ev.Key {
+				case termbox.KeyEsc:
+					break quit
+				}
+			}
 		}
 	}
 }
