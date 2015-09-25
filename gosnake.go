@@ -38,7 +38,6 @@ const (
 	rightY       int           = 20
 	snakeX       int           = rightX / 2
 	snakeY       int           = rightY / 2
-	idle         int           = -1
 	left         int           = 0
 	right        int           = 1
 	up           int           = 2
@@ -269,21 +268,15 @@ func (s *snake) moveRight() {
 }
 
 func (s *snake) setDirection(direction int) {
-	if s.direction == idle {
-		if direction == left || direction == right || direction == up || direction == down {
-			s.direction = direction
-		}
-	} else {
-		// the snake can't go backward
-		if direction == left && !(s.direction == left || s.direction == right) {
-			s.direction = left
-		} else if direction == right && !(s.direction == left || s.direction == right) {
-			s.direction = right
-		} else if direction == up && !(s.direction == up || s.direction == down) {
-			s.direction = up
-		} else if direction == down && !(s.direction == up || s.direction == down) {
-			s.direction = down
-		}
+	// the snake can't go backward
+	if direction == left && !(s.direction == left || s.direction == right) {
+		s.direction = left
+	} else if direction == right && !(s.direction == left || s.direction == right) {
+		s.direction = right
+	} else if direction == up && !(s.direction == up || s.direction == down) {
+		s.direction = up
+	} else if direction == down && !(s.direction == up || s.direction == down) {
+		s.direction = down
 	}
 }
 
@@ -355,14 +348,13 @@ func (g *game) isComplete() bool {
 }
 
 func initSnake() *snake {
-	// TODO: fix the initial snake position
 	snake := &snake{
 		coordinates: []coordinate{
 			coordinate{x: snakeX, y: snakeY},
 			coordinate{x: snakeX - xStep, y: snakeY},
 			coordinate{x: snakeX - (xStep * 2), y: snakeY},
 		},
-		direction: idle,
+		direction: right,
 	}
 	return snake
 }
