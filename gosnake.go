@@ -101,7 +101,7 @@ func drawLeftLine() {
 	}
 }
 
-func drawRightLine() {
+func drawBottomLine() {
 	colorDefault := termbox.ColorDefault
 	for i := leftX; i <= rightX; i++ {
 		var c rune
@@ -116,7 +116,7 @@ func drawRightLine() {
 	}
 }
 
-func drawBottomLine() {
+func drawRightLine() {
 	colorDefault := termbox.ColorDefault
 	for i := leftY + 1; i <= rightY; i++ {
 		c := '\u2502'
