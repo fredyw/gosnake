@@ -136,9 +136,9 @@ func drawSnake(snake *snake) {
 	for idx, coordinate := range snake.coordinates {
 		var ch rune
 		if idx == 0 {
-			ch = '@'
+			ch = '\u25CF'
 		} else {
-			ch = '*'
+			ch = '\u2B1B'
 		}
 		termbox.SetCell(coordinate.x, coordinate.y, ch, colorDefault, colorDefault)
 	}
